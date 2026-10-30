@@ -6,7 +6,6 @@ The ASCII arts are inspired by [OpenCode font](https://opencode.ai/font/).
 
 ```bash
 # Usage:
-
 .\shiglet.ps1 [-Gap <n>] [-Width <n>] <text ...>
 
     -Gap <n>      # Spaces between character (default 1).
@@ -30,7 +29,7 @@ The ASCII arts are inspired by [OpenCode font](https://opencode.ai/font/).
 # ▀  ▀ ▀▀▀▀ ▀ ▀ ▀▀▀▀    ▀▀ ▀▀ ▀▀▀▀ ▀    ▀ ▀▀▀▀    ▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀
 
 .\shiglet.ps1 -Width 60 the quick brown fox
-# Renders the pangram with no space between glyphs, wrapping at 60 columns.
+# Wrapping characters at 60 columns.
 #      ▄                             ▄
 # █▄▄  █▀▀▄ █▀▀█    █▀▀█ █  █ █ █▀▀▀ █ ▄▀
 # █  ▄ █  █ █▀▀▀    █  █ █  █ █ █    █▀▄
