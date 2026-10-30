@@ -1,4 +1,4 @@
-# shigle
+# shiglet
 
 Turn text into ASCII art, figlet-style.
 
