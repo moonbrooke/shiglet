@@ -163,7 +163,7 @@ $script:Gap = $Gap
 $script:GapText = ' ' * $Gap
 $script:Height = 0
 
-$fontDirectory = $PSScriptRoot
+$fontDirectory = "$PSScriptRoot\chars"
 if ([string]::IsNullOrEmpty($fontDirectory)) {
     $fontDirectory = (Get-Location).ProviderPath
 }
