@@ -5,7 +5,9 @@
     Turn text into ASCII art right from your terminal.
 
 .DESCRIPTION
-    shiglet.ps1 renders text using the local character files (0-9.txt and a-z.txt).
+    shiglet.ps1 renders text using the local character files in the chars folder.
+    Letter and digit files are named after the character (a.txt, 7.txt); punctuation
+    uses word names (comma.txt, period.txt, question-mark.txt, quote.txt).
     Each character is 4 rows tall and made of half-block shapes
     (U+2580, U+2584, U+2588), with the top row used for tall letters with ascenders.
     Any missing characters get skipped with a warning message.
@@ -32,10 +34,15 @@
     Renders "hello".
 
 .EXAMPLE
-    .\shiglet.ps1 Hello, World! 2026
+    .\shiglet.ps1 "Hello, World!" 2026
 
-    Renders two words and a number. Skipping the comma and
-    exclamation mark since the font only supports letters and digits.
+    Renders two words and a number. The comma is rendered; the exclamation
+    mark is skipped because the font has no glyph for it.
+
+.EXAMPLE
+    .\shiglet.ps1 "Wait... what?" "Say 'hi'"
+
+    Renders the comma, period, question mark, and quote glyphs.
 
 .EXAMPLE
     .\shiglet.ps1 -Gap 0 -Width 60 the quick brown fox
@@ -154,6 +161,7 @@ function Show-Usage {
     Write-Output 'Examples:'
     Write-Output '  .\shiglet.ps1 hello'
     Write-Output '  .\shiglet.ps1 "Hello, World!" 2026'
+    Write-Output '  .\shiglet.ps1 "Wait... what?"'
     Write-Output '  .\shiglet.ps1 -Width 60 the quick brown fox'
 }
 
@@ -162,6 +170,16 @@ $script:WarnedCharacters = @{}
 $script:Gap = $Gap
 $script:GapText = ' ' * $Gap
 $script:Height = 0
+
+# Punctuation can't live in a single-character file name on every platform, so
+# those glyphs use word names. Each name (without .txt) maps to the character or
+# characters it stands for, letting one file cover related marks such as quotes.
+$script:GlyphNames = @{
+    'comma'         = @(',')
+    'period'        = @('.')
+    'question-mark' = @('?')
+    'quote'         = @("'")
+}
 
 $fontDirectory = "$PSScriptRoot\chars"
 if ([string]::IsNullOrEmpty($fontDirectory)) {
@@ -183,11 +201,17 @@ try {
     $utf8 = New-Object System.Text.UTF8Encoding($false)
 
     foreach ($file in @(Get-ChildItem -LiteralPath $fontDirectory -Filter '*.txt' -File -ErrorAction SilentlyContinue)) {
-        if ($file.BaseName.Length -ne 1) { continue }
+        $baseName = $file.BaseName
+        $characters = @()
 
-        $key = $file.BaseName.ToLowerInvariant()
-        if ($key -notmatch '^[a-z0-9]$') { continue }
-        if ($script:Glyphs.ContainsKey($key)) { continue }
+        if ($baseName.Length -eq 1) {
+            $characters = @($baseName)
+        }
+        elseif ($script:GlyphNames.ContainsKey($baseName.ToLowerInvariant())) {
+            $characters = $script:GlyphNames[$baseName.ToLowerInvariant()]
+        }
+
+        if ($characters.Count -eq 0) { continue }
 
         $allLines = [System.IO.File]::ReadAllLines($file.FullName, $utf8)
         if ($allLines.Length -eq 0) { continue }
@@ -207,15 +231,23 @@ try {
         }
         if ($glyphWidth -eq 0) { continue }
 
-        $script:Glyphs[$key] = [pscustomobject] @{
+        $glyph = [pscustomobject] @{
             Rows   = $rows
             Width  = $glyphWidth
             Height = $rows.Count
         }
+
+        # A named file may stand for more than one character (quote covers both
+        # " and '). Don't overwrite an existing glyph if two files collide.
+        foreach ($character in $characters) {
+            $key = ([string] $character).ToLowerInvariant()
+            if ($script:Glyphs.ContainsKey($key)) { continue }
+            $script:Glyphs[$key] = $glyph
+        }
     }
 
     if ($script:Glyphs.Count -eq 0) {
-        throw "No glyph files were found in '$fontDirectory'. Expected single-character .txt files such as a.txt and 7.txt."
+        throw "No glyph files were found in '$fontDirectory'. Expected .txt files such as a.txt, 7.txt, or comma.txt."
     }
 
     $script:Height = Get-GlyphHeight -Glyphs @($script:Glyphs.Values)
