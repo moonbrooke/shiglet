@@ -5,7 +5,7 @@
     Turn text into ASCII art right from your terminal.
 
 .DESCRIPTION
-    shigle.ps1 renders text using the local character files (0-9.txt and a-z.txt).
+    shiglet.ps1 renders text using the local character files (0-9.txt and a-z.txt).
     Each character is 4 rows tall and made of half-block shapes
     (U+2580, U+2584, U+2588), with the top row used for tall letters with ascenders.
     Any missing characters get skipped with a warning message.
@@ -27,18 +27,18 @@
     Lists the characters that have glyph files and exits.
 
 .EXAMPLE
-    .\shigle.ps1 hello
+    .\shiglet.ps1 hello
 
     Renders "hello".
 
 .EXAMPLE
-    .\shigle.ps1 Hello, World! 2026
+    .\shiglet.ps1 Hello, World! 2026
 
     Renders two words and a number. Skipping the comma and
     exclamation mark since the font only supports letters and digits.
 
 .EXAMPLE
-    .\shigle.ps1 -Gap 0 -Width 60 the quick brown fox
+    .\shiglet.ps1 -Gap 0 -Width 60 the quick brown fox
 
     Renders the pangram with no space between glyphs, wrapping at 60 columns.
 #>
@@ -145,16 +145,16 @@ function Format-Items {
 }
 
 function Show-Usage {
-    Write-Output 'Usage: .\shigle.ps1 [-Gap <n>] [-Width <n>] <text ...>'
+    Write-Output 'Usage: .\shiglet.ps1 [-Gap <n>] [-Width <n>] <text ...>'
     Write-Output ''
     Write-Output '  -Gap <n>      Spaces between character (default 1).'
     Write-Output '  -Width <n>    Wrap banners at this column; 0 disables wrapping (default 0).'
     Write-Output '  -List         List the characters that have glyph files.'
     Write-Output ''
     Write-Output 'Examples:'
-    Write-Output '  .\shigle.ps1 hello'
-    Write-Output '  .\shigle.ps1 "Hello, World!" 2026'
-    Write-Output '  .\shigle.ps1 -Width 60 the quick brown fox'
+    Write-Output '  .\shiglet.ps1 hello'
+    Write-Output '  .\shiglet.ps1 "Hello, World!" 2026'
+    Write-Output '  .\shiglet.ps1 -Width 60 the quick brown fox'
 }
 
 $script:Glyphs = @{}
