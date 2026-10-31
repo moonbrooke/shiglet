@@ -180,7 +180,6 @@ $script:GlyphNames = @{
     'exclamation-mark'  = @('!')
     'period'            = @('.')
     'question-mark'     = @('?')
-    'quote'             = @("'")
     'underscore'        = @("_")
 }
 
