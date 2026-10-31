@@ -175,11 +175,13 @@ $script:Height = 0
 # those glyphs use word names. Each name (without .txt) maps to the character or
 # characters it stands for, letting one file cover related marks such as quotes.
 $script:GlyphNames = @{
-    'comma'         = @(',')
-    'period'        = @('.')
-    'question-mark' = @('?')
-    'quote'         = @("'")
-    'underscore'    = @("_")
+    'comma'             = @(',')
+    'dash'              = @("-")
+    'exclamation-mark'  = @('!')
+    'period'            = @('.')
+    'question-mark'     = @('?')
+    'quote'             = @("'")
+    'underscore'        = @("_")
 }
 
 $fontDirectory = "$PSScriptRoot\chars"
