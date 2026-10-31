@@ -29,8 +29,8 @@ The ASCII arts are inspired by [OpenCode font](https://opencode.ai/font/).
 .\shiglet.ps1 Wait... what?
 #                                  ▄              ▄▄▄▄
 # █   █ ▀▀▀▄ █ █▄▄           █   █ █▀▀▄ ▀▀▀▄ █▄▄  ▀  █
-# █ ▄ █ █▀▀█ █ █  ▄          █ ▄ █ █  █ █▀▀█ █  ▄  █▀
-# ▀▀ ▀▀ ▀▀▀▀ ▀ ▀▀▀▀ ▀ ▀ ▀    ▀▀ ▀▀ ▀  ▀ ▀▀▀▀ ▀▀▀▀  ▄
+# █ ▄ █ █▀▀█ █ █  ▄          █ ▄ █ █  █ █▀▀█ █  ▄  ▀▀
+# ▀▀ ▀▀ ▀▀▀▀ ▀ ▀▀▀▀ ▀ ▀ ▀    ▀▀ ▀▀ ▀  ▀ ▀▀▀▀ ▀▀▀▀  ▀
 
 .\shiglet.ps1 -Width 60 the quick brown fox
 # Wrapping characters at 60 columns.
