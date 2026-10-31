@@ -15,28 +15,24 @@ The ASCII arts are inspired by [OpenCode font](https://opencode.ai/font/).
 # Examples:
 
 .\shiglet.ps1 hello
-# Renders
 # ▄         ▄ ▄
 # █▀▀▄ █▀▀█ █ █ █▀▀█
 # █  █ █▀▀▀ █ █ █  █
 # ▀  ▀ ▀▀▀▀ ▀ ▀ ▀▀▀▀
 
-.\shiglet.ps1 "Hello, World! 2026"
-# Wrap in double quotes if more than one words.
-# Comma is rendered; the exclamation mark is skipped because there is no glyph for it.
+.\shiglet.ps1 Hello, World 2026
 # ▄         ▄ ▄                           ▄    ▄
 # █▀▀▄ █▀▀█ █ █ █▀▀█      █   █ █▀▀█ ▄▀▀▀ █ █▀▀█    ▀▀▀█ █▀▀█ ▀▀▀█ █▀▀▀
 # █  █ █▀▀▀ █ █ █  █      █ ▄ █ █  █ █    █ █  █    █▀▀▀ █  █ █▀▀▀ █▀▀█
 # ▀  ▀ ▀▀▀▀ ▀ ▀ ▀▀▀▀ █    ▀▀ ▀▀ ▀▀▀▀ ▀    ▀ ▀▀▀▀    ▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀
 
-.\shiglet.ps1 "Wait... what?"
-# Comma, period, question mark, and quotes have their own glyph files.
+.\shiglet.ps1 Wait... what?
 #                                  ▄              ▄▄▄▄
 # █   █ ▀▀▀▄ █ █▄▄           █   █ █▀▀▄ ▀▀▀▄ █▄▄  ▀  █
 # █ ▄ █ █▀▀█ █ █  ▄          █ ▄ █ █  █ █▀▀█ █  ▄  █▀
 # ▀▀ ▀▀ ▀▀▀▀ ▀ ▀▀▀▀ ▀ ▀ ▀    ▀▀ ▀▀ ▀  ▀ ▀▀▀▀ ▀▀▀▀  ▄
 
-.\shiglet.ps1 -Width 60 "the quick brown fox"
+.\shiglet.ps1 -Width 60 the quick brown fox
 # Wrapping characters at 60 columns.
 #      ▄                             ▄
 # █▄▄  █▀▀▄ █▀▀█    █▀▀█ █  █ █ █▀▀▀ █ ▄▀
