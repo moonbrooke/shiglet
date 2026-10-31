@@ -179,6 +179,7 @@ $script:GlyphNames = @{
     'period'        = @('.')
     'question-mark' = @('?')
     'quote'         = @("'")
+    'underscore'    = @("_")
 }
 
 $fontDirectory = "$PSScriptRoot\chars"
