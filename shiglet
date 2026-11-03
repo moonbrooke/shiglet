@@ -1,0 +1,434 @@
+#!/usr/bin/env bash
+
+# Turn text into ASCII art right from your terminal.
+#
+# shiglet renders text using the local character files in the chars folder.
+# Letter and digit files are named after the character (a.txt, 7.txt).
+# Punctuation uses word names (comma.txt, dash.txt, etc.).
+# Each character is 4 rows tall and made of half-block shapes
+# (U+2580, U+2584, U+2588), with the top row used for tall letters with ascenders.
+# Any missing characters get skipped with a warning message.
+#
+# The ASCII arts are inspired by OpenCode font (https://opencode.ai/font/).
+
+set -uo pipefail
+
+if ((${BASH_VERSINFO[0]:-0} < 4)); then
+    printf 'shiglet: Bash 4.0 or newer is required.\n' >&2
+    exit 1
+fi
+
+usage() {
+    cat <<'EOF'
+Usage: shiglet [-Gap <n>] [-Width <n>] <text ...>
+
+  -Gap <n>      Spaces between character (default 1).
+  -Width <n>    Wrap banners at this column; 0 disables wrapping (default 0).
+  -List         List the characters that have glyph files.
+
+Examples:
+  shiglet hello
+  shiglet Hello, World! 2026
+  shiglet "Wait... what?"
+  shiglet -Width 60 the quick brown fox
+EOF
+}
+
+# Read a glyph's row by index. Rows are stored joined by the unit separator so
+# that empty leading and interior rows survive.
+glyph_row() {
+    local key=$1 index=$2
+    local sep=$'\x1f'
+    local IFS=$sep
+    local -a row_parts
+    read -r -a row_parts <<<"${glyph_rows[$key]}"
+    printf '%s' "${row_parts[$index]}"
+}
+
+warn_missing() {
+    local character=$1 code
+    printf -v code '%d' "'$character"
+    printf "WARNING: No glyph for character '%s' (U+%04X); skipping it.\n" \
+        "$character" "$code" >&2
+}
+
+# Match PowerShell's culture-aware Sort-Object order for the glyph keys shown
+# in the README: _ - , ! ? . 0-9 a-z
+glyph_sort_rank() {
+    local character=$1
+    case "$character" in
+        '_') printf '0' ;;
+        '-') printf '1' ;;
+        ',') printf '2' ;;
+        '!') printf '3' ;;
+        '?') printf '4' ;;
+        '.') printf '5' ;;
+        [0-9]) printf '6%s' "$character" ;;
+        [a-z]) printf '7%s' "$character" ;;
+        *) printf '8%s' "$character" ;;
+    esac
+}
+
+# Validate a non-negative integer and print it without leading zeros. Returns
+# non-zero when the value is not an integer in the requested range.
+parse_uint() {
+    local value=$1 minimum=$2 maximum=$3
+    if [[ ! $value =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+    while [[ $value == 0* && ${#value} -gt 1 ]]; do
+        value=${value#0}
+    done
+    if ((${#value} > ${#maximum})) ||
+        ((10#$value < minimum || 10#$value > maximum)); then
+        return 1
+    fi
+    printf '%s' "$value"
+}
+
+# Render the wrapped block of glyph keys in the global current array.
+render_block() {
+    local item_count=${#current[@]}
+    local row index item width glyph_h row_line pad line spaces
+
+    if ((item_count == 0)); then
+        return 0
+    fi
+
+    if ((block_count > 0)); then
+        printf '\n'
+    fi
+    block_count=$((block_count + 1))
+
+    for ((row = 0; row < height; row++)); do
+        line=''
+
+        for ((index = 0; index < item_count; index++)); do
+            if ((index > 0)); then
+                line+=$gap_text
+            fi
+
+            item=${current[index]}
+
+            if [[ $item == '__space__' ]]; then
+                width=2
+                if ((row == 0)); then
+                    row_line='  '
+                else
+                    row_line=''
+                fi
+            else
+                width=${glyph_width[$item]}
+                glyph_h=${glyph_height[$item]}
+
+                if ((row < glyph_h)); then
+                    row_line=$(glyph_row "$item" "$row")
+                else
+                    row_line=''
+                fi
+            fi
+
+            line+=$row_line
+            pad=$((width - ${#row_line}))
+            if ((pad > 0)); then
+                printf -v spaces '%*s' "$pad" ''
+                line+=$spaces
+            fi
+        done
+
+        # Ignore trailing blank columns, just like the PowerShell version.
+        line="${line%"${line##*[![:space:]]}"}"
+        printf '%s\n' "$line"
+    done
+}
+
+gap=1
+width=0
+list=0
+text_parts=()
+
+while (($#)); do
+    case "${1,,}" in
+        -gap | --gap)
+            if (($# < 2)); then
+                printf 'shiglet: option %s requires a value.\n' "$1" >&2
+                exit 2
+            fi
+            gap=$2
+            shift 2
+            ;;
+        -gap:*)
+            gap=${1#*:}
+            shift
+            ;;
+        --gap=*)
+            gap=${1#*=}
+            shift
+            ;;
+        -width | --width)
+            if (($# < 2)); then
+                printf 'shiglet: option %s requires a value.\n' "$1" >&2
+                exit 2
+            fi
+            width=$2
+            shift 2
+            ;;
+        -width:*)
+            width=${1#*:}
+            shift
+            ;;
+        --width=*)
+            width=${1#*=}
+            shift
+            ;;
+        -list | --list)
+            list=1
+            shift
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            while (($#)); do
+                text_parts+=("$1")
+                shift
+            done
+            break
+            ;;
+        -*)
+            if [[ $1 == '-' ]]; then
+                text_parts+=("$1")
+                shift
+            else
+                printf "shiglet: unknown option '%s'.\n" "$1" >&2
+                printf "Try 'shiglet --help' for usage.\n" >&2
+                exit 2
+            fi
+            ;;
+        *)
+            text_parts+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if ! gap_value=$(parse_uint "$gap" 0 64); then
+    printf 'shiglet: -Gap must be an integer between 0 and 64.\n' >&2
+    exit 2
+fi
+if ! width_value=$(parse_uint "$width" 0 10000); then
+    printf 'shiglet: -Width must be an integer between 0 and 10000.\n' >&2
+    exit 2
+fi
+gap=$gap_value
+width=$width_value
+printf -v gap_text '%*s' "$gap" ''
+
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+font_directory="$script_dir/chars"
+
+declare -A glyph_rows=()
+declare -A glyph_width=()
+declare -A glyph_height=()
+declare -A warned=()
+declare -A glyph_names=(
+    [comma]=','
+    [dash]='-'
+    [exclamation-mark]='!'
+    [period]='.'
+    [question-mark]='?'
+    [underscore]='_'
+)
+
+sep=$'\x1f'
+
+shopt -s nullglob
+font_files=("$font_directory"/*.txt)
+shopt -u nullglob
+
+for file in "${font_files[@]}"; do
+    if [[ ! -f $file ]]; then
+        continue
+    fi
+
+    base=${file##*/}
+    base=${base%.txt}
+    characters=()
+
+    if ((${#base} == 1)); then
+        characters=("$base")
+    else
+        named_key=${base,,}
+        if [[ -n ${glyph_names[$named_key]+x} ]]; then
+            characters=("${glyph_names[$named_key]}")
+        fi
+    fi
+
+    if ((${#characters[@]} == 0)); then
+        continue
+    fi
+
+    lines=()
+    mapfile -t lines <"$file"
+    if ((${#lines[@]} == 0)); then
+        continue
+    fi
+
+    # Normalize CRLF files, then drop the blank lines left over from the
+    # file's final newline. Keep the leading (possibly blank) cap row.
+    for ((i = 0; i < ${#lines[@]}; i++)); do
+        lines[i]=${lines[i]%$'\r'}
+    done
+
+    end=$((${#lines[@]} - 1))
+    while ((end >= 0)) && [[ -z ${lines[end]} ]]; do
+        end=$((end - 1))
+    done
+    if ((end < 0)); then
+        continue
+    fi
+
+    # Ignore trailing blank columns so glyph widths reflect their visible ink.
+    rows=()
+    glyph_max_width=0
+    for ((i = 0; i <= end; i++)); do
+        row=${lines[i]}
+        row="${row%"${row##*[![:space:]]}"}"
+        rows+=("$row")
+        if ((${#row} > glyph_max_width)); then
+            glyph_max_width=${#row}
+        fi
+    done
+    if ((glyph_max_width == 0)); then
+        continue
+    fi
+
+    joined_rows=${rows[0]}
+    for ((i = 1; i < ${#rows[@]}; i++)); do
+        joined_rows+="$sep${rows[i]}"
+    done
+
+    # A named file may stand for more than one character. Don't overwrite an
+    # existing glyph if two files collide.
+    for character in "${characters[@]}"; do
+        key=${character,,}
+        if [[ -n ${glyph_rows[$key]+x} ]]; then
+            continue
+        fi
+        glyph_rows[$key]=$joined_rows
+        glyph_width[$key]=$glyph_max_width
+        glyph_height[$key]=${#rows[@]}
+    done
+done
+
+if ((${#glyph_rows[@]} == 0)); then
+    printf "shiglet: no glyph files were found in '%s'. Expected .txt files such as a.txt, 7.txt, or comma.txt.\n" \
+        "$font_directory" >&2
+    exit 1
+fi
+
+height=0
+for key in "${!glyph_height[@]}"; do
+    glyph_height_value=${glyph_height[$key]}
+    if ((glyph_height_value > height)); then
+        height=$glyph_height_value
+    fi
+done
+
+if ((list)); then
+    ranked=()
+    for key in "${!glyph_rows[@]}"; do
+        ranked+=("$(glyph_sort_rank "$key")"$'\t'"$key")
+    done
+    mapfile -t ranked < <(printf '%s\n' "${ranked[@]}" | LC_ALL=C sort -t $'\t' -k1,1)
+    supported=()
+    for entry in "${ranked[@]}"; do
+        supported+=("${entry#*$'\t'}")
+    done
+    printf 'Supported characters (%d): %s\n' "${#supported[@]}" "${supported[*]}"
+    exit 0
+fi
+
+if ((${#text_parts[@]} == 0)); then
+    usage
+    exit 0
+fi
+
+input_text=''
+first_part=1
+for part in "${text_parts[@]}"; do
+    if ((first_part)); then
+        input_text=$part
+        first_part=0
+    else
+        input_text+=" $part"
+    fi
+done
+
+words=()
+if [[ -n $input_text ]]; then
+    IFS=$' \t\n\r\v\f' read -r -d '' -a words <<<"$input_text" || true
+fi
+
+if ((${#words[@]} == 0)); then
+    usage
+    exit 0
+fi
+
+current=()
+current_width=0
+block_count=0
+
+for word in "${words[@]}"; do
+    word_items=()
+    word_width=0
+    word_length=${#word}
+
+    for ((i = 0; i < word_length; i++)); do
+        character=${word:i:1}
+        key=${character,,}
+
+        if [[ -n ${glyph_rows[$key]+x} ]]; then
+            word_items+=("$key")
+            glyph_width_value=${glyph_width[$key]}
+            word_width=$((word_width + glyph_width_value))
+        elif [[ $character == [[:space:]] ]]; then
+            word_items+=('__space__')
+            word_width=$((word_width + 2))
+        else
+            if [[ -z ${warned[$key]+x} ]]; then
+                warned[$key]=1
+                warn_missing "$character"
+            fi
+        fi
+    done
+
+    if ((${#word_items[@]} == 0)); then
+        continue
+    fi
+    word_width=$((word_width + gap * (${#word_items[@]} - 1)))
+
+    if ((${#current[@]} > 0)); then
+        candidate_width=$((current_width + gap + 2 + gap + word_width))
+
+        if ((width > 0 && candidate_width > width)); then
+            render_block
+            current=()
+            current_width=0
+        else
+            current+=('__space__')
+            current+=("${word_items[@]}")
+            current_width=$candidate_width
+            continue
+        fi
+    fi
+
+    current+=("${word_items[@]}")
+    current_width=$word_width
+done
+
+if ((${#current[@]} > 0)); then
+    render_block
+fi
